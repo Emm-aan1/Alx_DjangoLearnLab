@@ -30,3 +30,13 @@ class Like(models.Model):
 
     def __str__(self):
         return f"Like by {self.user.username} on {self.post}"
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+    verb = models.CharField(max_length=255)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='actions')
+    target = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='notifications')
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Notification for {self.recipient.username}: {self.verb} by {self.actor.username}"
