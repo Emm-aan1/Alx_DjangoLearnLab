@@ -1,6 +1,5 @@
 from rest_framework import status, generics, permissions
 from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
 from .models import CustomUser, Post
 from .serializers import RegisterSerializer, UserSerializer, PostSerializer
 
@@ -11,8 +10,7 @@ class RegisterView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            token, created = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key}, status=status.HTTP_201_CREATED)
+            return Response({'token': user.auth_token.key}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserProfileView(generics.GenericAPIView):
