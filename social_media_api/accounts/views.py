@@ -1,38 +1,51 @@
-from rest_framework import status, permissions
+from rest_framework import status, generics, permissions
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
-from rest_framework.authtoken.views import ObtainAuthToken
-from .models import CustomUser
-from .serializers import RegisterSerializer, UserSerializer
+from .models import CustomUser, Post
+from .serializers import RegisterSerializer, UserSerializer, PostSerializer
 
-class RegisterView(APIView):
-    def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
+class RegisterView(generics.GenericAPIView):
+    serializer_class = RegisterSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
             token, created = Token.objects.get_or_create(user=user)
             return Response({'token': token.key}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class UserProfileView(APIView):
+class UserProfileView(generics.GenericAPIView):
+    serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
-    def get(self, request):
+
+    def get(self, request, *args, **kwargs):
         user = request.user
-        serializer = UserSerializer(user)
+        serializer = self.get_serializer(user)
         return Response(serializer.data)
 
-class FollowUserView(APIView):
+class UserListView(generics.ListAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request, user_id):
-        try:
-            user_to_follow = CustomUser.objects.get(id=user_id)
-            if request.user != user_to_follow:
-                request.user.following.add(user_to_follow)
-                return Response({'message': f'You are now following {user_to_follow.username}'}, status=status.HTTP_200_OK)
-            else:
-                return Response({'message': 'You cannot follow yourself'}, status=status.HTTP_400_BAD_REQUEST)
-        except CustomUser.DoesNotExist:
-            return Response({'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+class PostListView(generics.ListAPIView):
+    serializer_class = PostSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        following_users = user.following.all()
+        return Post.objects.filter(author__in=following_users).order_by('-created_at')
+
+class PostCreateView(generics.CreateAPIView):
+    serializer_class = PostSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+class PostRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+    permission_classes = [permissions.IsAuthenticated]
