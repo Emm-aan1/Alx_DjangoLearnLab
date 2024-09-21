@@ -10,7 +10,8 @@ class RegisterView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            return Response({'token': user.auth_token.key}, status=status.HTTP_201_CREATED)
+            token, created = Token.objects.get_or_create(user=user)  # Ensuring token is created
+            return Response({'token': token.key}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserProfileView(generics.GenericAPIView):
@@ -33,8 +34,8 @@ class PostListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        following_users = user.following.all()
-        return Post.objects.filter(author__in=following_users).order_by('-created_at')
+        following_users = user.following.all()  # Assuming 'following' is a related name
+        return Post.objects.filter(author__in=following_users).order_by('-created_at')  # Correct usage
 
 class PostCreateView(generics.CreateAPIView):
     serializer_class = PostSerializer
